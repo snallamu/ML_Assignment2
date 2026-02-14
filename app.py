@@ -159,19 +159,26 @@ def display_model_results(name, model, X_test, y_test):
     y_pred = model.predict(X_test)
     label_names = [CLASS_LABELS[i] for i in sorted(CLASS_LABELS)]
 
+    # Shortened tick labels so x-axis text fits without overflow
+    SHORT_LABELS = ["Very Poor", "Poor", "Satisfactory", "Good", "Excellent"]
+
     # Confusion Matrix
     with col_left:
         st.markdown("**Confusion Matrix**")
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(3.8, 3.2))
         cm = confusion_matrix(y_test, y_pred)
         disp = ConfusionMatrixDisplay(
             confusion_matrix=cm,
-            display_labels=list(CLASS_LABELS.values())
+            display_labels=SHORT_LABELS
         )
-        disp.plot(ax=ax, colorbar=False, xticks_rotation=45)
-        ax.set_title(f"{name}", fontsize=10)
-        plt.tight_layout()
-        st.pyplot(fig)
+        disp.plot(ax=ax, colorbar=False, xticks_rotation=30)
+        ax.set_title(name, fontsize=9, pad=6)
+        ax.tick_params(axis="both", labelsize=7)
+        ax.set_xlabel("Predicted label", fontsize=8)
+        ax.set_ylabel("True label", fontsize=8)
+        # Increase bottom margin so rotated labels are not clipped
+        fig.subplots_adjust(bottom=0.22, left=0.22)
+        st.pyplot(fig, use_container_width=False)
         plt.close(fig)
 
     # Classification Report
