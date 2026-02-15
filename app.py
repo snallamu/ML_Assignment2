@@ -12,11 +12,12 @@
 #   d. Confusion matrix and classification report
 # ------------------------------------------------------------
 
-import io
 import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+import platform
+import socket
 
 from sklearn.metrics import (
     classification_report,
@@ -46,7 +47,15 @@ st.write(
     "Use the default UCI dataset or upload your own test CSV below."
 )
 
-st.markdown("---")
+st.markdown("--------Student details------")
+st.write("Name : Saravanan Nallamuthu")
+st.write("Email : 2025ab05285@wilp.bits-pilani.ac.in")
+st.markdown("-----------------------------")
+
+st.markdown("-----Environment details-----")
+st.text(f"Machine Name: {socket.gethostname()}")
+st.text(f"OS Detail: {platform.system()} {platform.release()}")
+st.markdown("-----------------------------")
 
 # ------------------------------------------------------------
 # Sidebar — Controls
@@ -100,13 +109,14 @@ CLASS_LABELS = {
 }
 
 # ------------------------------------------------------------
-# Observations per model
+# Observations per model — reflect actual computed results
 # ------------------------------------------------------------
 OBSERVATIONS = {
     "Logistic Regression": (
-        "Served as a reliable baseline model with consistent performance, "
-        "but its linear decision boundary limits its ability to capture the "
-        "non-linear relationships present in this multi-class problem."
+        "Achieved the highest accuracy among all six models. Its linear "
+        "decision boundary generalised well on this dataset once intermediate "
+        "grades were removed, outperforming more complex models that struggled "
+        "with the reduced feature signal."
     ),
     "Decision Tree": (
         "Captured feature interactions effectively; however, its performance "
@@ -119,19 +129,23 @@ OBSERVATIONS = {
         "stability across different sample distributions."
     ),
     "Naive Bayes": (
-        "Executed very quickly and provided acceptable baseline results, "
-        "though the strong feature-independence assumption reduced accuracy "
-        "on the correlated demographic and academic features in this dataset."
+        "Executed very quickly but collapsed most predictions into a single "
+        "dominant class, resulting in the lowest accuracy. The strong "
+        "feature-independence assumption and class imbalance in predictions "
+        "caused a significant gap between precision and F1 score."
     ),
     "Random Forest": (
-        "Demonstrated strong and consistent performance by aggregating "
-        "predictions across 100 decision trees, which effectively reduced "
-        "variance and improved generalisation over single-tree models."
+        "Demonstrated solid performance as the second-best model, benefiting "
+        "from ensemble averaging to reduce variance. However, without the "
+        "intermediate grade features, the ensemble could not fully leverage "
+        "its capacity for complex pattern learning."
     ),
     "XGBoost": (
-        "Delivered the best overall results, benefiting from sequential "
-        "boosting, built-in regularisation, and its efficient capacity to "
-        "learn complex patterns from tabular data."
+        "Performed below expectation on this dataset, tying with KNN on "
+        "accuracy and recording the lowest MCC score. The removal of G1 and "
+        "G2 significantly reduced the predictive signal, limiting the boosting "
+        "algorithm's ability to learn meaningful patterns from demographic "
+        "features alone."
     ),
 }
 
@@ -142,7 +156,7 @@ OBSERVATIONS = {
 def display_model_results(name, model, X_test, y_test):
     st.subheader(f"Model: {name}")
 
-    # --- Metrics ---
+    # Compute and display all six metrics as individual tiles
     metrics = evaluate_model(model, X_test, y_test)
     metrics_display = {k: round(v, 4) for k, v in metrics.items()}
     col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -153,16 +167,16 @@ def display_model_results(name, model, X_test, y_test):
 
     st.markdown("")
 
-    # d. Confusion matrix + classification report (side by side)
+    # d. Confusion matrix + classification report displayed side by side
     col_left, col_right = st.columns([1, 1])
 
     y_pred = model.predict(X_test)
+    # Full labels used in the classification report (right column)
     label_names = [CLASS_LABELS[i] for i in sorted(CLASS_LABELS)]
-
-    # Shortened tick labels so x-axis text fits without overflow
+    # Shortened labels for confusion matrix tick marks to prevent overflow
     SHORT_LABELS = ["Very Poor", "Poor", "Satisfactory", "Good", "Excellent"]
 
-    # Confusion Matrix
+    # Confusion Matrix (left column)
     with col_left:
         st.markdown("**Confusion Matrix**")
         fig, ax = plt.subplots(figsize=(3.8, 3.2))
@@ -176,12 +190,12 @@ def display_model_results(name, model, X_test, y_test):
         ax.tick_params(axis="both", labelsize=7)
         ax.set_xlabel("Predicted label", fontsize=8)
         ax.set_ylabel("True label", fontsize=8)
-        # Increase bottom margin so rotated labels are not clipped
+        # Reserve bottom and left margin so rotated labels are not clipped
         fig.subplots_adjust(bottom=0.22, left=0.22)
         st.pyplot(fig, use_container_width=False)
         plt.close(fig)
 
-    # Classification Report
+    # Classification Report (right column)
     with col_right:
         st.markdown("**Classification Report**")
         report_str = classification_report(
@@ -191,7 +205,7 @@ def display_model_results(name, model, X_test, y_test):
         )
         st.code(report_str, language=None)
 
-    # Observation
+    # Per-model qualitative observation
     st.info(f"**Observation:** {OBSERVATIONS.get(name, '')}")
     st.markdown("---")
 
@@ -203,7 +217,7 @@ if run_button:
 
     with st.spinner("Loading data and training models..."):
 
-        # ── Data source: uploaded CSV or built-in UCI dataset ──
+        # Data source: use uploaded CSV if provided, else default UCI dataset
         if uploaded_file is not None:
             try:
                 test_df = pd.read_csv(uploaded_file)
@@ -211,7 +225,7 @@ if run_button:
                     f"Uploaded CSV loaded: {test_df.shape[0]} rows, "
                     f"{test_df.shape[1]} columns."
                 )
-                # Prepare uploaded data (uses fixed UCI training split)
+                # Train on UCI dataset, evaluate on user-supplied test data
                 X_train, X_test, y_train, y_test = prepare_uploaded_data(
                     test_df
                 )
@@ -226,7 +240,7 @@ if run_button:
             X_train, X_test, y_train, y_test = load_and_prepare_data()
             st.info("Using built-in UCI Student Performance dataset.")
 
-        # ── Build and train all models ──
+        # Build all six models and fit on training data
         all_models = build_models()
         for model in all_models.values():
             model.fit(X_train, y_train)
@@ -234,22 +248,19 @@ if run_button:
     st.success("Training complete!")
     st.markdown("---")
 
-    # ── c. Overall Model Comparison Table ──
+    # c. Overall model comparison table — all six models, all six metrics
     st.header("Model Comparison Table")
-
     rows = []
     for name, model in all_models.items():
         m = evaluate_model(model, X_test, y_test)
         m["Model"] = name
         rows.append(m)
-
     results_df = pd.DataFrame(rows).set_index("Model")
     st.dataframe(results_df.round(4), use_container_width=True)
     st.markdown("---")
 
-    # ── Per-model detailed view ──
+    # Per-model detailed results — metrics, confusion matrix, classification report
     st.header("Detailed Model Results")
-
     if selected_model == "All Models":
         for name, model in all_models.items():
             display_model_results(name, model, X_test, y_test)
@@ -264,7 +275,7 @@ if run_button:
         else:
             st.warning(f"Model '{selected_model}' not found.")
 
-    # ── Summary Observations Table ──
+    # Summary observations table
     st.header("Summary: Observations on Model Performance")
     obs_df = pd.DataFrame(
         list(OBSERVATIONS.items()),

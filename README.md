@@ -92,17 +92,15 @@ class imbalance.
 
 ## e. Model Comparison Table
 
-> **Note:** The values below are obtained from actual model execution.
-> Run the Streamlit app and update this table with your live results.
+| ML Model                 | Accuracy | AUC    | Precision | Recall | F1     | MCC    |
+|--------------------------|----------|--------|-----------|--------|--------|--------|
+| Logistic Regression      | 0.4154   | 0.6857 | 0.3827    | 0.3762 | 0.3775 | 0.2433 |
+| Decision Tree            | 0.3154   | 0.5612 | 0.3102    | 0.2980 | 0.2995 | 0.1228 |
+| KNN                      | 0.3000   | 0.5750 | 0.3094    | 0.2922 | 0.2964 | 0.0874 |
+| Naive Bayes              | 0.2385   | 0.6098 | 0.3802    | 0.3138 | 0.2145 | 0.1673 |
+| Random Forest (Ensemble) | 0.3538   | 0.6711 | 0.3329    | 0.3123 | 0.3131 | 0.1498 |
+| XGBoost (Ensemble)       | 0.3000   | 0.6190 | 0.2667    | 0.2684 | 0.2646 | 0.0535 |
 
-| ML Model                 | Accuracy | AUC  | Precision | Recall | F1   | MCC  |
-|--------------------------|----------|------|-----------|--------|------|------|
-| Logistic Regression      | —        | —    | —         | —      | —    | —    |
-| Decision Tree            | —        | —    | —         | —      | —    | —    |
-| KNN                      | —        | —    | —         | —      | —    | —    |
-| Naive Bayes              | —        | —    | —         | —      | —    | —    |
-| Random Forest (Ensemble) | —        | —    | —         | —      | —    | —    |
-| XGBoost (Ensemble)       | —        | —    | —         | —      | —    | —    |
 
 ---
 
@@ -110,12 +108,12 @@ class imbalance.
 
 | ML Model                 | Observation                                                                                                                                            |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Logistic Regression      | Served as a reliable baseline model with consistent performance, but its linear decision boundary limits its ability to capture non-linear relationships present in this multi-class problem. |
-| Decision Tree            | Captured feature interactions effectively; however, performance fluctuated across runs, indicating a tendency to overfit the training data without pruning. |
-| KNN                      | Produced moderate results but proved sensitive to feature scaling and the choice of neighbourhood size, which affected prediction stability.             |
-| Naive Bayes              | Executed very quickly and provided acceptable baseline results, though the strong feature-independence assumption reduced accuracy on the correlated features in this dataset. |
-| Random Forest (Ensemble) | Demonstrated strong and consistent performance by aggregating predictions across 100 decision trees, effectively reducing variance and improving generalisation. |
-| XGBoost (Ensemble)       | Delivered the best overall results, benefiting from sequential boosting, built-in regularisation, and its efficient capacity to learn complex patterns from tabular data. |
+| Logistic Regression      | Achieved the highest accuracy among all six models. Its linear decision boundary generalised well on this dataset once intermediate grades were removed, outperforming more complex models that struggled with the reduced feature signal. |
+| Decision Tree            | Captured feature interactions effectively; however, its performance showed fluctuation across runs, indicating a tendency to overfit the training data without pruning. |
+| KNN                      | Produced moderate results but proved sensitive to feature scaling and the choice of neighbourhood size, which affected prediction stability across different sample distributions. |
+| Naive Bayes              | Executed very quickly but collapsed most predictions into a single dominant class, resulting in the lowest accuracy. The strong feature-independence assumption and class imbalance in predictions caused a significant gap between precision and F1 score. |
+| Random Forest (Ensemble) | Demonstrated solid performance as the second-best model, benefiting from ensemble averaging to reduce variance. However, without the intermediate grade features, the ensemble could not fully leverage its capacity for complex pattern learning. |
+| XGBoost (Ensemble)       | Performed below expectation on this dataset, tying with KNN on accuracy and recording the lowest MCC score. The removal of G1 and G2 significantly reduced the predictive signal, limiting the boosting algorithm's ability to learn meaningful patterns from demographic features alone. |
 
 ---
 
@@ -163,10 +161,15 @@ and provides an interactive interface to:
 ## j. Conclusion
 
 This project demonstrates a comparative analysis of multiple
-classification models on a real-world educational dataset. Ensemble
-methods, particularly XGBoost, outperform simpler models due to their
-ability to capture complex non-linear patterns while reducing bias and
-variance through boosting and regularisation. The results confirm that
-model complexity must be balanced against interpretability, and that
-feature-independence assumptions (as in Naive Bayes) can limit
-performance on correlated real-world data.
+classification models on a real-world educational dataset. Contrary to
+the general expectation that ensemble methods outperform simpler models,
+Logistic Regression achieved the highest accuracy on this dataset. This
+outcome is explained by the deliberate exclusion of intermediate grade
+features (G1 and G2) to prevent data leakage, which substantially
+reduced the predictive signal available. With primarily demographic and
+social features remaining, a linear model generalised more effectively
+than complex ensemble methods that require richer feature interactions to
+demonstrate their advantage. The results highlight that model selection
+must account for the nature and richness of available features, and that
+simpler models can outperform complex ones when the underlying signal is
+limited.
