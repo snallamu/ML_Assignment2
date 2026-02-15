@@ -42,8 +42,17 @@ def build_models():
     """
     Returns an ordered dictionary of unfitted model instances.
 
-    All six models use the same hyperparameter defaults to ensure
-    a fair, comparable baseline evaluation on the same dataset.
+    Hyperparameters are tuned for the UCI Student Performance dataset
+    after G1/G2 removal. Key adjustments:
+      - class_weight='balanced' on LR and DT compensates for uneven
+        class distribution across the five performance levels.
+      - DT max_depth=6 and min_samples_leaf=5 reduce overfitting on
+        demographic features with limited predictive power.
+      - KNN n_neighbors=7 is more robust than the default 5 for this
+        dataset size (~835 training samples, 5 classes).
+      - RF n_estimators=200 and max_depth=10 improve ensemble stability.
+      - XGBoost learning_rate=0.05 with n_estimators=300 allows finer
+        gradient steps, which helps when signal is weak.
 
     Gaussian Naive Bayes is selected because the feature set
     contains continuous numerical values after preprocessing,
@@ -53,31 +62,43 @@ def build_models():
     return {
         "Logistic Regression": LogisticRegression(
             max_iter=1000,
-            random_state=42
+            random_state=42,
+            class_weight="balanced"         # corrects majority-class bias
         ),
         "Decision Tree": DecisionTreeClassifier(
-            random_state=42
+            random_state=42,
+            class_weight="balanced",        # corrects majority-class bias
+            max_depth=6,                    # prevents overfitting on weak features
+            min_samples_leaf=5             # ensures each leaf has enough support
         ),
-        # Classifies each sample based on the 5 nearest training neighbours.
+        # n_neighbors=7 reduces sensitivity to local noise vs default 5
         "KNN": KNeighborsClassifier(
-            n_neighbors=5
+            n_neighbors=7
         ),
         # Gaussian NB selected: features are continuous after StandardScaler.
         "Naive Bayes": GaussianNB(),
         "Random Forest": RandomForestClassifier(
-            n_estimators=100,
-            random_state=42
+            n_estimators=200,               # more trees = more stable ensemble
+            max_depth=10,                   # limits depth to reduce variance
+            random_state=42,
+            class_weight="balanced"         # corrects majority-class bias
         ),
         "XGBoost": XGBClassifier(
             objective="multi:softprob",
             num_class=5,
             eval_metric="mlogloss",
             random_state=42,
-            verbosity=0
+            verbosity=0,
+            n_estimators=300,              # more boosting rounds for weak signal
+            learning_rate=0.05,            # smaller steps to avoid overfitting
+            max_depth=4                    # shallow trees suit low-signal features
         ),
     }
 
 
+# ------------------------------------------------------------
+# Single model evaluation
+# ------------------------------------------------------------
 # ------------------------------------------------------------
 # Single model evaluation
 # ------------------------------------------------------------
@@ -122,6 +143,9 @@ def evaluate_model(model, X_test, y_test):
 
 # ------------------------------------------------------------
 # Convenience wrapper — train all models and return results df
+# ------------------------------------------------------------
+# ------------------------------------------------------------
+# Convenience wrapper — train and evaluate all six models
 # ------------------------------------------------------------
 def run_all_models(X_train, X_test, y_train, y_test):
     """
